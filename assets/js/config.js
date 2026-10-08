@@ -17,6 +17,7 @@ const config=Object.freeze({
   documentFunction:'lms-admin-documents',
   productFunction:'training-product-management',
   organizationFunction:'training-organization-management',
+  instructorFunction:'training-instructor-management',
   managementFunction:'screenings4u-training-management',
   storageKey:'s4u-training-management-session'
 });
