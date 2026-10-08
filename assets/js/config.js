@@ -11,6 +11,7 @@ const config=Object.freeze({
   readFunction:'training-management-read',
   courseFunction:'training-course-management',
   lessonFunction:'training-lesson-management',
+  quizFunction:'training-quiz-management',
   storageKey:'s4u-training-management-session'
 });
 window.TRAINING_PORTAL_CONFIG=config;
