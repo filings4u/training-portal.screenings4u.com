@@ -13,6 +13,7 @@ const config=Object.freeze({
   lessonFunction:'training-lesson-management',
   quizFunction:'training-quiz-management',
   assessmentFunction:'training-assessment-management',
+  certificateFunction:'lms-admin-certificates',
   storageKey:'s4u-training-management-session'
 });
 window.TRAINING_PORTAL_CONFIG=config;
