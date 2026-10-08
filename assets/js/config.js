@@ -18,6 +18,8 @@ const config=Object.freeze({
   productFunction:'training-product-management',
   organizationFunction:'training-organization-management',
   instructorFunction:'training-instructor-management',
+  blogFunction:'training-blog-management',
+  publicBlogFunction:'public-training-blog',
   managementFunction:'screenings4u-training-management',
   storageKey:'s4u-training-management-session'
 });
