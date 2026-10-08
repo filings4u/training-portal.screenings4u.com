@@ -14,6 +14,7 @@ const config=Object.freeze({
   quizFunction:'training-quiz-management',
   assessmentFunction:'training-assessment-management',
   certificateFunction:'lms-admin-certificates',
+  productFunction:'training-product-management',
   storageKey:'s4u-training-management-session'
 });
 window.TRAINING_PORTAL_CONFIG=config;
