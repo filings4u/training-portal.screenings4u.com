@@ -1,0 +1,17 @@
+(()=>{
+'use strict';
+const page=(location.pathname.split('/').pop()||'dashboard.html').toLowerCase();
+const groups=[
+ ['Control Center',[['dashboard.html','Dashboard','⌂'],['website.html','Training Website','◫']]],
+ ['Learning',[['courses.html','Courses','▶'],['lessons.html','Lessons','▣'],['quizzes.html','Quizzes','?'],['assessments.html','Assessments','✓'],['instructors.html','Instructors','♟']]],
+ ['Learners',[['learners.html','Learners','◉'],['enrollments.html','Enrollments','≡'],['certificates.html','Certificates','◆'],['group-seats.html','Group Seats','♙'],['documents.html','Documents','▱']]],
+ ['Live Training',[['live-training.html','Live Training','●'],['appointments.html','Appointments','◷']]],
+ ['Commerce',[['products.html','Products & Pricing','$'],['orders.html','Orders','▧'],['billing.html','Billing & Invoices','▤'],['organizations.html','Organizations','▣']]],
+ ['Operations',[['notifications.html','Notifications','●'],['support.html','Support','?'],['reports.html','Reports','☷'],['settings.html','Settings','⚙']]]
+];
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function nav(){return groups.map(([g,items])=>`<div class="tm-nav-group"><span>${esc(g)}</span>${items.map(([href,label,icon])=>`<a href="${href}" class="${page===href?'active':''}"><i>${icon}</i><b>${esc(label)}</b></a>`).join('')}</div>`).join('')}
+function initials(n){return String(n||'TM').split(/\s+|@/).filter(Boolean).slice(0,2).map(x=>x[0]?.toUpperCase()).join('')||'TM'}
+function render(state){const profile=state?.profile||{},user=state?.user||{},staff=state?.staff||{},name=profile.display_name||[profile.first_name,profile.last_name].filter(Boolean).join(' ')||user.email||'Training Staff';const role=state?.training_access?.access_level||staff.job_title||'staff';document.body.innerHTML=`<div class="tm-app"><aside class="tm-sidebar"><div class="tm-brand"><a href="dashboard.html"><img src="images/training-logo.png" alt="Screenings4u Learning Center"></a><small>Management Portal</small></div><div class="tm-workspace"><span>Workspace</span><strong>Learning Center Operations</strong></div><nav class="tm-nav">${nav()}</nav><div class="tm-sidebar-footer">training-portal.screenings4u.com<br>Training management control plane</div></aside><div class="tm-main"><header class="tm-topbar"><div class="tm-top-left"><button class="tm-menu" id="tmMenu">☰</button><div class="tm-top-title"><strong>Screenings4u Learning Center</strong><small>Training Management Portal</small></div></div><div class="tm-top-actions"><a href="notifications.html" aria-label="Notifications">●</a><a href="support.html" aria-label="Support">?</a><button class="tm-user" id="tmUser"><span class="tm-avatar">${esc(initials(name))}</span><span class="tm-user-copy"><strong>${esc(name)}</strong><small>${esc(role)}</small></span></button></div></header><div class="tm-scroll"><main class="tm-page" id="tmPage"><div class="tm-loading">Loading Training management…</div></main></div></div></div>`;document.getElementById('tmMenu')?.addEventListener('click',()=>document.body.classList.toggle('tm-menu-open'));document.getElementById('tmUser')?.addEventListener('click',()=>window.TrainingAuth.signOut());}
+window.TrainingShell=Object.freeze({render,groups,esc});
+})();

@@ -1,0 +1,4 @@
+(()=>{
+'use strict';const form=document.getElementById('loginForm'),status=document.getElementById('loginStatus');const set=(m,e=false)=>{status.hidden=!m;status.textContent=m||'';status.className='status'+(e?' error':'')};const reason=new URLSearchParams(location.search).get('reason');if(reason==='inactive')set('For security, you were signed out after 10 minutes of inactivity.');else if(reason==='expired')set('Your secure management session expired. Please sign in again.');
+form?.addEventListener('submit',async e=>{e.preventDefault();set('Signing in…');const email=form.email.value.trim(),password=form.password.value;try{const r=await window.trainingSupabase.auth.signInWithPassword({email,password});if(r.error)throw r.error;await window.TrainingAuth.requireAuth();location.replace('dashboard.html')}catch(err){set(err?.message||'Unable to sign in.',true)}});
+})();
