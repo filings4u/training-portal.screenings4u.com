@@ -10,6 +10,7 @@ const config=Object.freeze({
   contextFunction:'training-management-context',
   readFunction:'training-management-read',
   courseFunction:'training-course-management',
+  lessonFunction:'training-lesson-management',
   storageKey:'s4u-training-management-session'
 });
 window.TRAINING_PORTAL_CONFIG=config;
