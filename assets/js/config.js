@@ -14,6 +14,7 @@ const config=Object.freeze({
   quizFunction:'training-quiz-management',
   assessmentFunction:'training-assessment-management',
   certificateFunction:'lms-admin-certificates',
+  documentFunction:'lms-admin-documents',
   productFunction:'training-product-management',
   organizationFunction:'training-organization-management',
   managementFunction:'screenings4u-training-management',
