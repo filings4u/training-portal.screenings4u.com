@@ -13,9 +13,10 @@ async function invoke(slug,body={}){
   return data;
 }
 async function requireAuth(){
+  if(!window.TrainingPortalGuard||!(await window.TrainingPortalGuard.validate()))return null;
   const {data,error}=await c().auth.getSession();
   if(error)throw error;
-  if(!data?.session?.access_token){location.replace('login.html');return null;}
+  if(!data?.session?.access_token){location.replace('https://enterprise.screenings4u.com/portal-selector.html?portal=training');return null;}
   const state=await invoke(window.TRAINING_PORTAL_CONFIG.contextFunction,{action:'context'});
   window.TRAINING_AUTH_STATE={...state,session:data.session};
   try{sessionStorage.setItem(CACHE,JSON.stringify({savedAt:Date.now(),state:window.TRAINING_AUTH_STATE}))}catch{}
