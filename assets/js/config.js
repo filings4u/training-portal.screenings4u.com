@@ -20,6 +20,7 @@ const config=Object.freeze({
   instructorFunction:'training-instructor-management',
   blogFunction:'training-blog-management',
   reportFunction:'training-report-management',
+  settingsFunction:'training-settings-management',
   publicBlogFunction:'public-training-blog',
   managementFunction:'screenings4u-training-management',
   storageKey:'s4u-training-management-session'
