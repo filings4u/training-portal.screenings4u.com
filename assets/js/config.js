@@ -9,6 +9,7 @@ const config=Object.freeze({
   supabaseAnonKey:'sb_publishable_xVI6Mjkk1bNVMGHZCPuK6w_8FSHKdkC',
   contextFunction:'training-management-context',
   readFunction:'training-management-read',
+  courseFunction:'training-course-management',
   storageKey:'s4u-training-management-session'
 });
 window.TRAINING_PORTAL_CONFIG=config;
