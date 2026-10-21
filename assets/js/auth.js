@@ -13,7 +13,7 @@ async function invoke(slug,body={}){
   return data;
 }
 async function requireAuth(){
-  if(!window.TrainingPortalGuard||!(await window.TrainingPortalGuard.validate()))return null;
+  if(!window.TrainingPortalGuard){await new Promise((resolve,reject)=>{const script=document.createElement('script');script.src='assets/js/management-portal-guard.js?v=20261021-training-guard';script.onload=resolve;script.onerror=()=>reject(new Error('Training portal security module failed to load'));document.head.append(script)})}if(!(await window.TrainingPortalGuard.validate()))return null;
   const {data,error}=await c().auth.getSession();
   if(error)throw error;
   if(!data?.session?.access_token){location.replace('https://enterprise.screenings4u.com/portal-selector.html?portal=training');return null;}
