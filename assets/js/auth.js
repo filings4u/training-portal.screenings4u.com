@@ -25,7 +25,7 @@ async function requireAuth(){
 async function signOut(reason='manual'){
   clear();
   try{await c().auth.signOut({scope:'local'})}catch{}
-  location.replace('login.html'+(reason&&reason!=='manual'?`?reason=${encodeURIComponent(reason)}`:''));
+  location.replace('https://enterprise.screenings4u.com/portal-selector.html'+(reason&&reason!=='manual'?`?reason=${encodeURIComponent(reason)}`:''));
 }
 window.TrainingAuth=Object.freeze({requireAuth,signOut,invoke,clear});
 })();
