@@ -57,16 +57,21 @@ async function requireAuth(){
  // Run session retrieval and portal-handoff validation concurrently.
  // Both checks are still mandatory; no local token grants access.
  const guardPromise=loadGuard().then(guard=>guard.validate());
- const sessionPromise=c().auth.getSession();
- const [valid,sessionResult]=await Promise.all([guardPromise,sessionPromise]);
+ const contextPromise=c().auth.getSession().then(async ({data,error})=>{
+  if(error)throw error;
+  if(!data?.session?.access_token)return null;
+  // The context endpoint independently validates the JWT and active staff access.
+  // This call may run alongside (never replace) the portal handoff check.
+  const context=await invoke(window.TRAINING_PORTAL_CONFIG.contextFunction,{action:'context'});
+  return {...context,session:data.session};
+ });
+ const [valid,context]=await Promise.all([guardPromise,contextPromise]);
  if(!valid)return null;
- const {data,error}=sessionResult;
- if(error)throw error;
- if(!data?.session?.access_token){
+ if(!context){
   location.replace('https://enterprise.screenings4u.com/portal-selector.html?portal=training');
   return null;
  }
- const state=await invoke(window.TRAINING_PORTAL_CONFIG.contextFunction,{action:'context'});
+ const state=context;
  window.TRAINING_AUTH_STATE={...state,session:data.session};
  return window.TRAINING_AUTH_STATE;
 }
