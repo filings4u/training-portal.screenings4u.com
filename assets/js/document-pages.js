@@ -11,11 +11,57 @@ function table(h,r,e='No records found.'){return `<div class="tm-table-wrap"><ta
 function toast(m,t='success'){let x=$('.tm-toast');if(!x){x=document.createElement('div');x.className='tm-toast';document.body.appendChild(x)}x.className='tm-toast '+t;x.textContent=m;requestAnimationFrame(()=>x.classList.add('show'));clearTimeout(window.__tmDocToast);window.__tmDocToast=setTimeout(()=>x.classList.remove('show'),3200)}
 const docObj=row=>Array.isArray(row?.documents)?row.documents[0]:row?.documents||{};
 const bytes=n=>{const x=Number(n||0);if(!x)return '—';if(x<1024)return `${x} B`;if(x<1048576)return `${(x/1024).toFixed(1)} KB`;return `${(x/1048576).toFixed(1)} MB`};
+
+const documentName=(row)=>docObj(row).title||'Training Document';
+function safeFileName(name){return String(name||'training-document').replace(/[\\/:*?"<>|\\x00-\\x1f]/g,'_').slice(0,150)||'training-document'}
+function ensurePreview(){
+ let modal=document.getElementById('tmDocumentPreview');
+ if(modal)return modal;
+ modal=document.createElement('div');modal.id='tmDocumentPreview';modal.className='tm-document-preview';modal.hidden=true;
+ modal.innerHTML='<div class="tm-document-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="tmPreviewTitle"><div class="tm-document-preview-header"><strong id="tmPreviewTitle">Document Preview</strong><div class="tm-actions"><button type="button" class="tm-btn" id="tmPreviewDownload">Download</button><button type="button" class="tm-btn" id="tmPreviewClose">Close</button></div></div><div class="tm-document-preview-body" id="tmPreviewBody"></div></div>';
+ document.body.appendChild(modal);
+ const close=()=>{modal.hidden=true;document.getElementById('tmPreviewBody').replaceChildren();document.body.classList.remove('tm-preview-open')};
+ modal.querySelector('#tmPreviewClose').onclick=close;
+ modal.addEventListener('click',e=>{if(e.target===modal)close()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!modal.hidden)close()});
+ return modal;
+}
+async function downloadDocument(id,name){
+ const data=await api('signed',{id});
+ if(!data?.url)throw new Error('The file is unavailable.');
+ const response=await fetch(data.url);
+ if(!response.ok)throw new Error('Unable to download this document.');
+ const blob=await response.blob();
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement('a');a.href=url;a.download=safeFileName(name);document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+async function viewDocument(id,name,mime){
+ const modal=ensurePreview(),body=modal.querySelector('#tmPreviewBody');
+ body.textContent='Opening document…';
+ modal.querySelector('#tmPreviewTitle').textContent=name||'Document Preview';
+ modal.hidden=false;document.body.classList.add('tm-preview-open');
+ modal.querySelector('#tmPreviewDownload').onclick=()=>downloadDocument(id,name).catch(e=>toast(e.message||String(e),'error'));
+ try{
+  const data=await api('signed',{id});
+  if(!data?.url)throw new Error('The file is unavailable.');
+  const kind=String(mime||'').toLowerCase();
+  body.replaceChildren();
+  if(kind.startsWith('image/')){const img=document.createElement('img');img.src=data.url;img.alt=name||'Learner document';body.appendChild(img)}
+  else if(kind==='application/pdf'){const iframe=document.createElement('iframe');iframe.src=data.url;iframe.title=name||'PDF document';body.appendChild(iframe)}
+  else{const p=document.createElement('p');p.textContent='This file format cannot be previewed in the browser. Use Download to review it.';body.appendChild(p)}
+ }catch(e){body.textContent=e.message||'Unable to open document.'}
+}
+function bindDocumentActions(){
+ document.querySelectorAll('[data-doc-view]').forEach(btn=>btn.onclick=()=>viewDocument(btn.dataset.docView,btn.dataset.docName,btn.dataset.docMime));
+ document.querySelectorAll('[data-doc-download]').forEach(btn=>btn.onclick=async()=>{btn.disabled=true;try{await downloadDocument(btn.dataset.docDownload,btn.dataset.docName)}catch(e){toast(e.message||String(e),'error')}finally{btn.disabled=false}});
+}
+
 async function list(){
  const d=await api('list'),profiles=new Map((d.profiles||[]).map(p=>[p.id,p])),enrollments=new Map((d.enrollments||[]).map(e=>[e.id,e])),rows=d.documents||[];
  $('#tmPage').innerHTML=head('Documents','Manage Training learner documents, submissions, reviews, and enrollment assignments.',`<a class="tm-btn primary" href="document-upload.html">Upload Document</a>`)+
- `<div class="tm-searchbar"><input id="docSearch" placeholder="Search learner, document, category, course, or status"><select id="docStatus"><option value="">All status</option><option value="submitted">Submitted</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option></select></div><section class="tm-card">${table(['Document','Learner','Category','Course','Status','Created','Action'],rows.map(r=>{const p=profiles.get(r.user_id)||{},e=enrollments.get(r.enrollment_id)||{},doc=docObj(r),search=[doc.title,p.display_name,p.email,r.category,e.lms_courses?.title,r.status].filter(Boolean).join(' ').toLowerCase();return `<tr data-search="${esc(search)}" data-status="${esc(r.status||'')}"><td><strong>${esc(doc.title||'Training Document')}</strong><small>${esc(doc.mime_type||'')} ${doc.file_size?`• ${esc(bytes(doc.file_size))}`:''}</small></td><td><strong>${esc(person(p))}</strong><small>${esc(p.email||'')}</small></td><td>${esc(r.category||'—')}</td><td>${esc(e.lms_courses?.title||'—')}</td><td>${statusBadge(r.status)}</td><td>${dt(r.created_at)}</td><td><a class="tm-btn" href="document.html?id=${encodeURIComponent(r.id)}">Manage</a></td></tr>`}).join(''),'No Training documents found.')}</section>`;
- const apply=()=>{const q=$('#docSearch').value.trim().toLowerCase(),s=$('#docStatus').value;document.querySelectorAll('tbody tr[data-search]').forEach(r=>r.hidden=!!((q&&!r.dataset.search.includes(q))||(s&&r.dataset.status!==s)))};$('#docSearch').oninput=apply;$('#docStatus').onchange=apply;
+ `<div class="tm-searchbar"><input id="docSearch" placeholder="Search learner, document, category, course, or status"><select id="docStatus"><option value="">All status</option><option value="submitted">Submitted</option><option value="accepted">Accepted</option><option value="rejected">Rejected</option></select></div><section class="tm-card">${table(['Document','Learner','Category','Course','Status','Created','Action'],rows.map(r=>{const p=profiles.get(r.user_id)||{},e=enrollments.get(r.enrollment_id)||{},doc=docObj(r),search=[doc.title,p.display_name,p.email,r.category,e.lms_courses?.title,r.status].filter(Boolean).join(' ').toLowerCase();return `<tr data-search="${esc(search)}" data-status="${esc(r.status||'')}"><td><strong>${esc(doc.title||'Training Document')}</strong><small>${esc(doc.mime_type||'')} ${doc.file_size?`• ${esc(bytes(doc.file_size))}`:''}</small></td><td><strong>${esc(person(p))}</strong><small>${esc(p.email||'')}</small></td><td>${esc(r.category||'—')}</td><td>${esc(e.lms_courses?.title||'—')}</td><td>${statusBadge(r.status)}</td><td>${dt(r.created_at)}</td><td><div class="tm-document-row-actions"><button class="tm-btn" type="button" data-doc-view="${esc(r.id)}" data-doc-name="${esc(documentName(r))}" data-doc-mime="${esc(doc.mime_type||'')}">View</button><button class="tm-btn" type="button" data-doc-download="${esc(r.id)}" data-doc-name="${esc(documentName(r))}">Download</button><a class="tm-btn" href="document.html?id=${encodeURIComponent(r.id)}">Manage</a></div></td></tr>`}).join(''),'No Training documents found.')}</section>`;
+ const apply=()=>{const q=$('#docSearch').value.trim().toLowerCase(),s=$('#docStatus').value;document.querySelectorAll('tbody tr[data-search]').forEach(r=>r.hidden=!!((q&&!r.dataset.search.includes(q))||(s&&r.dataset.status!==s)))};$('#docSearch').oninput=apply;$('#docStatus').onchange=apply;bindDocumentActions();
 }
 async function upload(){
  const d=await api('list'),profiles=d.profiles||[],enrollments=d.enrollments||[];
@@ -28,8 +74,8 @@ async function upload(){
 async function detail(){
  if(!id){location.replace('documents.html');return}const d=await api('get',{id}),r=d.document,doc=docObj(r),p=d.profile||{},e=d.enrollment||{};
  $('#tmPage').innerHTML=head('Document Record',doc.title||'Training Document',`<a class="tm-btn" href="documents.html">Back to Documents</a><a class="tm-btn" href="document-assignment.html?id=${encodeURIComponent(id)}">Manage Assignment</a>`)+
- `<div class="tm-grid"><section class="tm-card two-thirds"><div class="tm-card-head"><div><h2>Document</h2><p>Review the document record and approval state.</p></div><button class="tm-btn" id="openFile" type="button">Open File</button></div><div class="tm-card-body"><div class="tm-form-grid"><div class="tm-field"><label>Learner</label><div class="tm-count"><strong>${esc(person(p))}</strong><div>${esc(p.email||'—')}</div></div></div><div class="tm-field"><label>Enrollment</label><div class="tm-count"><strong>${esc(e.lms_courses?.title||'Not assigned')}</strong><div>${esc(e.status||'')}</div></div></div><div class="tm-field"><label>Category</label><div class="tm-count">${esc(r.category||'—')}</div></div><div class="tm-field"><label>Status</label><div class="tm-count">${statusBadge(r.status)}</div></div><div class="tm-field"><label>File type</label><div class="tm-count">${esc(doc.mime_type||'—')}</div></div><div class="tm-field"><label>File size</label><div class="tm-count">${esc(bytes(doc.file_size))}</div></div><div class="tm-field"><label>Created</label><div class="tm-count">${dt(r.created_at)}</div></div><div class="tm-field"><label>Reviewed</label><div class="tm-count">${dt(r.reviewed_at)}</div></div><div class="tm-field wide"><label>Description</label><div class="tm-count">${esc(doc.description||'—')}</div></div></div></div></section><aside class="tm-card one-third"><div class="tm-card-head"><div><h2>Review</h2><p>Approve or reject this learner document.</p></div></div><div class="tm-card-body"><form id="reviewForm" class="tm-stack"><div class="tm-field"><label>Review status</label><select id="reviewStatus"><option value="accepted" ${r.status==='accepted'?'selected':''}>Accepted</option><option value="rejected" ${r.status==='rejected'?'selected':''}>Rejected</option></select></div><div class="tm-field"><label>Admin notes</label><textarea id="reviewNotes" rows="6">${esc(r.admin_notes||'')}</textarea></div><button class="tm-btn primary" type="submit">Save Review</button>${p.id?`<a class="tm-btn" href="learner.html?id=${encodeURIComponent(p.id)}">Open Learner</a>`:''}${r.enrollment_id?`<a class="tm-btn" href="enrollment.html?id=${encodeURIComponent(r.enrollment_id)}">Open Enrollment</a>`:''}</form></div></aside></div>`;
- $('#openFile').onclick=async()=>{try{const s=await api('signed',{id});window.open(s.url,'_blank','noopener')}catch(x){toast(x.message||String(x),'error')}};
+ `<div class="tm-grid"><section class="tm-card two-thirds"><div class="tm-card-head"><div><h2>Document</h2><p>Review the document record and approval state.</p></div><div class="tm-document-row-actions"><button class="tm-btn" id="openFile" type="button">View File</button><button class="tm-btn" id="downloadFile" type="button">Download</button></div></div><div class="tm-card-body"><div class="tm-form-grid"><div class="tm-field"><label>Learner</label><div class="tm-count"><strong>${esc(person(p))}</strong><div>${esc(p.email||'—')}</div></div></div><div class="tm-field"><label>Enrollment</label><div class="tm-count"><strong>${esc(e.lms_courses?.title||'Not assigned')}</strong><div>${esc(e.status||'')}</div></div></div><div class="tm-field"><label>Category</label><div class="tm-count">${esc(r.category||'—')}</div></div><div class="tm-field"><label>Status</label><div class="tm-count">${statusBadge(r.status)}</div></div><div class="tm-field"><label>File type</label><div class="tm-count">${esc(doc.mime_type||'—')}</div></div><div class="tm-field"><label>File size</label><div class="tm-count">${esc(bytes(doc.file_size))}</div></div><div class="tm-field"><label>Created</label><div class="tm-count">${dt(r.created_at)}</div></div><div class="tm-field"><label>Reviewed</label><div class="tm-count">${dt(r.reviewed_at)}</div></div><div class="tm-field wide"><label>Description</label><div class="tm-count">${esc(doc.description||'—')}</div></div></div></div></section><aside class="tm-card one-third"><div class="tm-card-head"><div><h2>Review</h2><p>Approve or reject this learner document.</p></div></div><div class="tm-card-body"><form id="reviewForm" class="tm-stack"><div class="tm-field"><label>Review status</label><select id="reviewStatus"><option value="accepted" ${r.status==='accepted'?'selected':''}>Accepted</option><option value="rejected" ${r.status==='rejected'?'selected':''}>Rejected</option></select></div><div class="tm-field"><label>Admin notes</label><textarea id="reviewNotes" rows="6">${esc(r.admin_notes||'')}</textarea></div><button class="tm-btn primary" type="submit">Save Review</button>${p.id?`<a class="tm-btn" href="learner.html?id=${encodeURIComponent(p.id)}">Open Learner</a>`:''}${r.enrollment_id?`<a class="tm-btn" href="enrollment.html?id=${encodeURIComponent(r.enrollment_id)}">Open Enrollment</a>`:''}</form></div></aside></div>`;
+ $('#openFile').onclick=()=>viewDocument(id,documentName(r),doc.mime_type);$('#downloadFile').onclick=()=>downloadDocument(id,documentName(r)).catch(x=>toast(x.message||String(x),'error'));
  $('#reviewForm').onsubmit=async e1=>{e1.preventDefault();try{await api('review',{id,status:$('#reviewStatus').value,notes:$('#reviewNotes').value.trim()});toast('Document review saved.');setTimeout(()=>location.reload(),450)}catch(x){toast(x.message||String(x),'error')}};
 }
 async function assignment(){
