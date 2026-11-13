@@ -22,14 +22,35 @@ async function invoke(slug,body={}){
 }
 async function loadGuard(){
  if(window.TrainingPortalGuard)return window.TrainingPortalGuard;
- await new Promise((resolve,reject)=>{
-  const script=document.createElement('script');
-  script.src='assets/js/management-portal-guard.js?v=20261021-training-guard';
-  script.onload=resolve;
-  script.onerror=()=>reject(new Error('Training portal security module failed to load'));
-  document.head.append(script);
- });
- if(!window.TrainingPortalGuard)throw new Error('Training portal guard unavailable');
+ // The same server-side handoff validation as management-portal-guard.js,
+ // inlined to avoid downloading a second JS file after page startup.
+ const KEY='s4u-management-entry-training-v1';
+ const redirect=(reason)=>{
+  try{sessionStorage.removeItem(KEY)}catch{}
+  location.replace('https://enterprise.screenings4u.com/portal-selector.html?reason='+encodeURIComponent(reason||'selector_required')+'&portal=training');
+ };
+ const guard={
+  validate:async()=>{
+   let token;
+   try{token=sessionStorage.getItem(KEY)}catch{}
+   if(!token){redirect('selector_required');return false}
+   if(!c()){redirect('portal_client_unavailable');return false}
+   const {data,error}=await c().functions.invoke('management-portal-handoff',{
+     body:{action:'validate',portal_session_token:token,portal_code:'training',host:location.host.toLowerCase()}
+   });
+   if(error||!data?.valid){
+    try{await c().auth.signOut({scope:'local'})}catch{}
+    redirect(data?.error||error?.message||'portal_session_invalid');
+    return false;
+   }
+   window.TRAINING_MANAGEMENT_ENTRY=data;
+   return true;
+  },
+  clear:()=>{try{sessionStorage.removeItem(KEY)}catch{}},
+  key:KEY,
+  portal:'training'
+ };
+ window.TrainingPortalGuard=Object.freeze(guard);
  return window.TrainingPortalGuard;
 }
 async function requireAuth(){
