@@ -72,7 +72,7 @@ async function requireAuth(){
   return null;
  }
  const state=context;
- window.TRAINING_AUTH_STATE={...state,session:data.session};
+ window.TRAINING_AUTH_STATE=state;
  return window.TRAINING_AUTH_STATE;
 }
 async function signOut(reason='manual'){
