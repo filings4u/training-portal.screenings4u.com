@@ -8,7 +8,25 @@ const fmtDate=v=>v?new Intl.DateTimeFormat('en-US',{month:'short',day:'numeric',
 const badge=v=>{const x=String(v||'').toLowerCase();const cls=['published','active','completed'].includes(x)?'ok':['draft','review'].includes(x)?'warn':['archived','cancelled'].includes(x)?'bad':'';return `<span class="tm-badge ${cls}">${esc(v||'—')}</span>`};
 let toastTimer;
 function toast(msg,type=''){let el=$('#tmBuilderToast');if(!el){el=document.createElement('div');el.id='tmBuilderToast';el.className='tm-builder-toast';document.body.appendChild(el)}el.textContent=msg;el.className='tm-builder-toast '+(type||'')+' show';clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800)}
-function dialog(title,message,fieldsHtml,okLabel='Save'){return new Promise(resolve=>{const wrap=document.createElement('div');wrap.className='tm-dialog-backdrop';wrap.innerHTML=`<section class="tm-dialog" role="dialog" aria-modal="true"><div class="tm-dialog-brand"><img src="images/training-logo2.png" alt="Workforce Training"></div><div class="tm-dialog-body"><h2>${esc(title)}</h2><p>${esc(message||'')}</p>${fieldsHtml||''}<div class="tm-dialog-actions"><button class="tm-btn" data-cancel>Cancel</button><button class="tm-btn primary" data-ok>${esc(okLabel)}</button></div></div></section>`;document.body.appendChild(wrap);const close=v=>{wrap.remove();resolve(v)};wrap.querySelector('[data-cancel]').onclick=()=>close(null);wrap.querySelector('[data-ok]').onclick=()=>close(wrap);wrap.addEventListener('click',e=>{if(e.target===wrap)close(null)});});}
+function dialog(title,message,fieldsHtml,okLabel='Save'){
+ return new Promise(resolve=>{
+  const host=document.querySelector('#tmStudioEditorBody')||document.querySelector('.tm-studio-editor');
+  if(!host){toast('Course editor is unavailable.','error');resolve(null);return}
+  const wrap=document.createElement('section');
+  wrap.className='tm-studio-inline-panel tm-studio-inline-dialog';
+  wrap.innerHTML=`<header class="tm-studio-inline-header"><div><span class="tm-studio-eyebrow">WORKFORCE TRAINING</span><h2>${esc(title)}</h2><p>${esc(message||'')}</p></div></header><div class="tm-studio-inline-form">${fieldsHtml||''}<div class="tm-studio-inline-actions"><button class="tm-studio-btn" type="button" data-cancel>Cancel</button><button class="tm-studio-btn gold" type="button" data-ok>${esc(okLabel)}</button></div></div>`;
+  host.replaceChildren(wrap);
+  const close=value=>{
+   if(!value){
+    if(state.editorTab==='quiz')studioQuizView();else if(state.selectedLesson)studioLoadBlocks(true);else host.innerHTML='<div class="tm-studio-empty">Choose a lesson to start editing.</div>';
+   }
+   resolve(value);
+  };
+  wrap.querySelector('[data-cancel]').onclick=()=>close(null);
+  wrap.querySelector('[data-ok]').onclick=()=>close(wrap);
+  wrap.querySelector('input,textarea,button')?.focus();
+ });
+}
 async function confirmDialog(title,message,okLabel='Continue'){const d=await dialog(title,message,'',okLabel);return !!d}
 function field(label,id,value='',type='text',wide=false){return `<div class="tm-field ${wide?'wide':''}"><label for="${id}">${esc(label)}</label><input id="${id}" type="${type}" value="${esc(value??'')}"></div>`}
 function textarea(label,id,value='',wide=false){return `<div class="tm-field ${wide?'wide':''}"><label for="${id}">${esc(label)}</label><textarea id="${id}" rows="4">${esc(value??'')}</textarea></div>`}
