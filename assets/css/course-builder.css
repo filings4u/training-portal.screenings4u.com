@@ -92,3 +92,22 @@ body[data-page="course-builder"] .tm-builder.tm-studio{gap:0;font-family:inherit
 .tm-studio-empty{padding:25px 16px;color:#718298;font-size:12px;line-height:1.6}
 @media(max-width:1180px){.tm-studio-columns{grid-template-columns:minmax(215px,34%) minmax(280px,1fr)}.tm-studio-properties{grid-column:1/-1}.tm-studio-properties-form{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}.tm-studio-properties-form hr,.tm-studio-properties-form h3,.tm-studio-properties-form .tm-studio-save{grid-column:1/-1}}
 @media(max-width:760px){body[data-page="course-builder"] .tm-page{padding:12px}.tm-studio-hero-body{flex-direction:column;align-items:stretch}.tm-studio-hero-right{width:auto;max-width:none}.tm-studio-columns{grid-template-columns:minmax(0,1fr)}.tm-studio-properties{grid-column:auto}.tm-studio-outline-scroll{max-height:480px}.tm-studio-properties-form{grid-template-columns:1fr}.tm-studio-course{align-items:flex-start}.tm-studio-cover{width:62px;height:62px}.tm-studio-name h1{font-size:19px}}
+
+
+/* Direct editing of LMS content blocks in the Course Builder workspace */
+.tm-studio-content-top{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:11px;color:#01122f}
+.tm-studio-content-top a{font-size:10px;color:#245ea2;font-weight:800;text-decoration:none}
+.tm-studio-block{display:grid;gap:10px}
+.tm-studio-block-actions{display:flex;gap:6px}
+.tm-studio-block-actions button{border:1px solid #d8e3f1;border-radius:6px;background:#fff;color:#254c79;font-size:10px;font-weight:800;cursor:pointer;padding:6px 9px}
+.tm-studio-block-actions button:first-child{background:#fdc102;border-color:#fdc102;color:#01122f}
+.tm-studio-field{display:grid;gap:6px;font-size:10px;font-weight:800;color:#2c4868}
+.tm-studio-field input,.tm-studio-field textarea{width:100%;border:1px solid #d3dfee;border-radius:7px;padding:9px;font-size:11px;color:#01122f;background:#fff;resize:vertical}
+.tm-studio-rich-toolbar{display:flex;gap:4px;padding:5px;background:#f4f7fb;border:1px solid #dbe5f2;border-bottom:0;border-radius:7px 7px 0 0}
+.tm-studio-rich-toolbar button{background:#fff;border:1px solid #dce6f1;border-radius:5px;min-width:32px;height:29px;cursor:pointer;color:#01122f}
+.tm-studio-rich{border:1px solid #cddced;background:#fff;border-radius:0 0 7px 7px;min-height:115px;padding:12px;outline-offset:2px;color:#183655;font-size:12px;line-height:1.65;overflow-wrap:anywhere}
+.tm-studio-rich:focus{outline:2px solid #fdc102}
+.tm-studio-rich p{margin:.5em 0}
+.tm-studio-add-blocks button{background:#f8fbff;border:1px solid #e1e9f4;padding:12px 3px;border-radius:7px;color:#194474;font-weight:800;font-size:10px;cursor:pointer}
+.tm-studio-add-blocks button:hover{background:#fff0bc}
+.tm-studio-add-blocks p{font-size:10px;color:#70859a;margin:10px 0 0}
