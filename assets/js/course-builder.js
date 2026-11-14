@@ -54,7 +54,68 @@ function curriculumHtml(){
  ${selected?`<form id="tmStudioLessonForm" class="tm-studio-properties-form"><label>Lesson Title<input name="title" required value="${esc(selected.title)}"></label><label>Description<textarea name="description" rows="4">${esc(selected.description||'')}</textarea></label><div class="tm-studio-form-two"><label>Estimated Time (minutes)<input name="estimated_minutes" type="number" min="0" value="${Number(selected.estimated_minutes||0)}"></label><label>Status<select name="status">${['draft','published','archived'].map(t=>`<option value="${t}" ${selected.status===t?'selected':''}>${t}</option>`).join('')}</select></label></div><hr><h3>Learning Requirements</h3><label class="tm-studio-toggle"><span>Required lesson</span><input name="is_required" type="checkbox" ${selected.is_required?'checked':''}></label><label class="tm-studio-toggle"><span>Completion required</span><input name="completion_required" type="checkbox" ${selected.completion_required?'checked':''}></label><label class="tm-studio-toggle"><span>Lock until previous completed</span><input name="lock_until_previous_complete" type="checkbox" ${selected.lock_until_previous_complete?'checked':''}></label><hr><h3>Assessments</h3><p>${associatedQuizzes.length} linked quizzes · ${associatedAssessments.length} linked assessments</p><a class="tm-studio-wide-link" href="quizzes.html?course_id=${encodeURIComponent(state.id)}">Manage Knowledge Checks ↗</a><button class="tm-studio-save" type="submit">Save Lesson Settings</button></form>`:'<div class="tm-studio-empty">Lesson settings appear here after selecting a lesson.</div>'}
  </aside></div>`;
 }
+function studioRenderBlockEditor(){
+ const host=document.querySelector('#tmStudioEditorBody');
+ if(!host||!state.selectedLesson)return;
+ const content=state.lessonCache?.[state.selectedLesson];
+ if(!content){host.innerHTML='<div class="tm-studio-edit-card"><p class="tm-studio-hint">Loading lesson content…</p></div>';return}
+ const lessonId=state.selectedLesson;
+ const blockMarkup=content.blocks.map((b,index)=>{
+   const type=String(b.block_type||'text');
+   const textTypes=['text','heading'].includes(type);
+   const editArea=textTypes?`<div class="tm-studio-rich" contenteditable="true" role="textbox" aria-label="Edit ${esc(type)} content" data-rich-block="${b.id}">${b.content||''}</div>`:`<label class="tm-studio-field">Content / resource URL<textarea data-block-content="${b.id}" rows="3">${esc(b.content||'')}</textarea></label>
+     <label class="tm-studio-field">External URL<input data-block-url="${b.id}" value="${esc(b.external_url||'')}" type="url" placeholder="https://"></label>
+     ${b.media_id?'<p class="tm-studio-hint">An uploaded media resource is attached to this block.</p>':''}`;
+   return `<article class="tm-studio-edit-card tm-studio-block" draggable="true" data-studio-block="${b.id}">
+    <div class="tm-studio-edit-card-head"><span><span class="tm-drag" aria-hidden="true">⠿</span> ${esc(type.replace('_',' '))} Block ${index+1}</span><div class="tm-studio-block-actions"><button type="button" data-save-block="${b.id}">Save</button><button type="button" data-delete-block="${b.id}" aria-label="Delete block" title="Delete block">×</button></div></div>
+    <label class="tm-studio-field">Block Title<input data-block-title="${b.id}" value="${esc(b.title||'')}" placeholder="Optional title"></label>
+    ${textTypes?`<div class="tm-studio-rich-toolbar" aria-label="Formatting tools"><button type="button" data-format="bold" title="Bold"><b>B</b></button><button type="button" data-format="italic" title="Italic"><i>I</i></button><button type="button" data-format="insertUnorderedList" title="Bulleted list">☷</button><button type="button" data-format="insertOrderedList" title="Numbered list">≡</button></div>`:''}
+    ${editArea}</article>`
+ }).join('');
+ host.innerHTML=`<div class="tm-studio-content-top"><strong>${content.blocks.length} Content Block${content.blocks.length===1?'':'s'}</strong><a href="lesson-editor.html?id=${encodeURIComponent(lessonId)}">Full editor ↗</a></div>${blockMarkup||'<div class="tm-studio-edit-card"><p class="tm-studio-hint">No content blocks yet. Add text, video, image or a knowledge check below.</p></div>'}
+ <div class="tm-studio-add-blocks"><span>ADD CONTENT</span><div>${[['text','▤ Text'],['heading','T Heading'],['video','▷ Video'],['audio','♫ Audio'],['image','▧ Image'],['pdf','▱ PDF'],['link','↗ Link'],['quiz','? Quiz'],['knowledge_check','✓ Check']].map(([type,name])=>`<button type="button" data-add-block="${type}">${name}</button>`).join('')}</div><p>For uploading media files, use the full lesson editor.</p></div>`;
+ host.querySelectorAll('[data-format]').forEach(btn=>btn.onclick=()=>{const rich=btn.closest('.tm-studio-block').querySelector('[data-rich-block]');rich?.focus();document.execCommand(btn.dataset.format,false,null)});
+ host.querySelectorAll('[data-save-block]').forEach(btn=>btn.onclick=async()=>{
+   const id=btn.dataset.saveBlock,b=content.blocks.find(x=>x.id===id),card=btn.closest('.tm-studio-block');
+   if(!b)return;
+   const rich=card.querySelector('[data-rich-block]'),text=card.querySelector('[data-block-content]'),url=card.querySelector('[data-block-url]');
+   const payload={action:'save_block',lesson_id:lessonId,block_id:id,block_type:b.block_type,title:card.querySelector('[data-block-title]').value,
+   content:rich?rich.innerHTML:text?.value??b.content??'',external_url:url?.value??b.external_url??'',media_id:b.media_id||null,
+   settings:b.settings||{},is_required:b.is_required,sort_order:b.sort_order};
+   try{await window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.lessonFunction,payload);toast('Content block saved.');await studioLoadBlocks(true)}catch(err){toast(err.message||String(err),'error')}
+ });
+ host.querySelectorAll('[data-delete-block]').forEach(btn=>btn.onclick=async()=>{if(!await confirmDialog('Delete content block?','This permanently deletes this lesson content block.','Delete Block'))return;try{await window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.lessonFunction,{action:'delete_block',lesson_id:lessonId,block_id:btn.dataset.deleteBlock});toast('Content block deleted.');await studioLoadBlocks(true)}catch(err){toast(err.message||String(err),'error')}});
+ host.querySelectorAll('[data-add-block]').forEach(btn=>btn.onclick=async()=>{
+   const type=btn.dataset.addBlock;
+   const d=await dialog('Add '+type.replace('_',' ')+' block','Add content to this lesson. Uploaded media can be attached from the full lesson editor.',`<div class="tm-builder-form">${field('Title','newStudioBlockTitle','','text',true)}${textarea('Content or URL','newStudioBlockContent','',true)}</div>`,'Add Block');
+   if(!d)return;
+   const title=d.querySelector('#newStudioBlockTitle').value.trim(),val=d.querySelector('#newStudioBlockContent').value.trim();
+   try{await window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.lessonFunction,{action:'save_block',lesson_id:lessonId,block_type:type,title,content:['text','heading'].includes(type)?`<p>${esc(val)}</p>`:val,external_url:type==='link'||type==='video'||type==='embed'?val:'',is_required:true,settings:{}});toast('Content block added.');await studioLoadBlocks(true)}catch(err){toast(err.message||String(err),'error')}
+ });
+ let dragging=null;
+ host.querySelectorAll('[data-studio-block]').forEach(el=>{
+   el.ondragstart=e=>{if(e.target.closest('[contenteditable],input,textarea,button')){e.preventDefault();return}dragging=el.dataset.studioBlock;el.classList.add('dragging')};
+   el.ondragend=()=>{dragging=null;el.classList.remove('dragging')};
+   el.ondragover=e=>{if(!dragging)return;e.preventDefault();const dragged=host.querySelector(`[data-studio-block="${dragging}"]`);if(dragged&&dragged!==el){const r=el.getBoundingClientRect();el.parentNode.insertBefore(dragged,e.clientY>r.top+r.height/2?el.nextSibling:el)}};
+   el.ondrop=async e=>{if(!dragging)return;e.preventDefault();const ids=[...host.querySelectorAll('[data-studio-block]')].map(x=>x.dataset.studioBlock);dragging=null;try{await window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.lessonFunction,{action:'reorder_blocks',lesson_id:lessonId,block_ids:ids});toast('Block order saved.');await studioLoadBlocks(true)}catch(err){toast(err.message||String(err),'error')}};
+ });
+}
+async function studioLoadBlocks(force=false){
+ const id=state.selectedLesson;
+ if(!id)return;
+ state.lessonCache=state.lessonCache||{};
+ if(!force&&state.lessonCache[id]){studioRenderBlockEditor();return}
+ if(!force&&state.blockLoading===id)return;
+ state.blockLoading=id;
+ try{
+  const data=await window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.lessonFunction,{action:'get',lesson_id:id});
+  state.lessonCache[id]=data;
+  if(state.selectedLesson===id&&document.querySelector('#tmStudioEditorBody'))studioRenderBlockEditor();
+ }catch(e){if(state.selectedLesson===id){const host=document.querySelector('#tmStudioEditorBody');if(host)host.innerHTML=`<div class="tm-studio-edit-card"><p class="tm-studio-hint">${esc(e.message||String(e))}</p><a href="lesson-editor.html?id=${encodeURIComponent(id)}">Open full editor</a></div>`}}
+ finally{if(state.blockLoading===id)state.blockLoading=''}
+}
 function studioBind(){
+ if(state.selectedLesson)studioLoadBlocks();
  document.querySelectorAll('[data-select-lesson]').forEach(b=>b.addEventListener('click',()=>{state.selectedLesson=b.dataset.selectLesson;render();bind();switchTab('curriculum')}));
  document.querySelectorAll('[data-collapse]').forEach(b=>b.addEventListener('click',()=>{const box=b.closest('.tm-section').querySelector('.tm-lessons');const hidden=box.hidden=!box.hidden;b.setAttribute('aria-expanded',String(!hidden));b.textContent=hidden?'›':'⌄'}));
  document.querySelector('#tmAddModuleBottom')?.addEventListener('click',()=>editSection());
