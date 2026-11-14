@@ -255,7 +255,7 @@ function studioInlineForm(title,description,html,onSubmit){
  const host=document.querySelector('#tmStudioEditorBody')||document.querySelector('.tm-studio-editor');
  if(!host){toast('Lesson editor is not available.','error');return}
  host.innerHTML=`<section class="tm-studio-inline-panel"><header class="tm-studio-inline-header"><div><span class="tm-studio-eyebrow">COURSE BUILDER</span><h2>${esc(title)}</h2><p>${esc(description)}</p></div><button type="button" class="tm-studio-icon-btn" id="tmInlineCancel" aria-label="Close form">×</button></header><form id="tmInlineEditorForm" class="tm-studio-inline-form">${html}<div class="tm-studio-inline-actions"><button type="button" class="tm-studio-btn" id="tmInlineCancelBottom">Cancel</button><button type="submit" class="tm-studio-btn gold">Save ${esc(title)}</button></div></form></section>`;
- const back=()=>{state.editorTab='content';studioLoadBlocks(true)};
+ const back=()=>{state.editorTab='content';if(state.selectedLesson)studioLoadBlocks(true);else host.innerHTML='<div class="tm-studio-empty">Choose a lesson or create your first lesson.</div>'};
  host.querySelector('#tmInlineCancel').onclick=back;
  host.querySelector('#tmInlineCancelBottom').onclick=back;
  host.querySelector('#tmInlineEditorForm').onsubmit=async e=>{e.preventDefault();const button=e.currentTarget.querySelector('[type=submit]');button.disabled=true;try{await onSubmit(e.currentTarget)}catch(err){toast(err.message||String(err),'error');button.disabled=false}};
@@ -274,7 +274,7 @@ function editSection(id=''){
 }
 function editLesson(id='',sectionId=''){
  const lesson=id?(state.workspace.lessons||[]).find(x=>x.id===id):null;
- if(lesson){state.selectedLesson=lesson.id;state.editorTab='content';render();bind();switchTab('curriculum');document.querySelector('#tmStudioLessonForm input[name="title"]')?.focus();return}
+ if(lesson){if(studioDirty()&&!window.confirm('Discard unsaved changes and open this lesson?'))return;state.selectedLesson=lesson.id;state.studioDirty=false;state.editorTab='content';render();bind();switchTab('curriculum');document.querySelector('#tmStudioLessonForm input[name="title"]')?.focus();return}
  const sid=sectionId||state.workspace.lessons?.find(l=>l.id===state.selectedLesson)?.section_id||state.workspace.sections?.[0]?.id;
  if(!sid){toast('Add a module first.','error');return}
  const section=(state.workspace.sections||[]).find(x=>x.id===sid);
