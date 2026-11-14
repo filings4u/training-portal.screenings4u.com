@@ -129,3 +129,26 @@ body[data-page="course-builder"] .tm-builder.tm-studio{gap:0;font-family:inherit
 .tm-studio-quiz-answer input:not([type=radio]){flex:1;min-width:0;border:1px solid #d6e0ec;border-radius:7px;padding:9px}
 .tm-studio-edit-card-head button{border:1px solid #d7e1ef;border-radius:7px;background:#fff;color:#204b79;font-size:10px;padding:6px 10px;cursor:pointer}
 .tm-studio-content-top button.tm-studio-btn.gold{background:#fdc102;border-color:#fdc102}
+
+
+/* Never overlay the curriculum while authoring: all add/edit forms live in the center pane */
+.tm-studio-inline-panel{display:grid;gap:0;min-width:0;border:1px solid #dce6f2;background:#fff;border-radius:11px;overflow:hidden}
+.tm-studio-inline-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;padding:17px;border-bottom:1px solid #e5edf5}
+.tm-studio-inline-header h2{font-size:18px;line-height:1.3;margin:4px 0;color:#01122f}
+.tm-studio-inline-header p{margin:4px 0 0;font-size:11px;line-height:1.5;color:#607791}
+.tm-studio-inline-form{display:grid;gap:15px;padding:17px}
+.tm-studio-inline-form .tm-builder-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tm-studio-inline-form .tm-builder-form>.wide{grid-column:1/-1}
+.tm-studio-inline-form .tm-studio-field{font-size:11px;display:grid;gap:7px;color:#263f61;font-weight:800}
+.tm-studio-inline-form .tm-studio-field input,.tm-studio-inline-form .tm-studio-field select,.tm-studio-inline-form .tm-studio-field textarea,.tm-studio-inline-form .tm-builder-form input:not([type=checkbox]):not([type=radio]),.tm-studio-inline-form .tm-builder-form textarea,.tm-studio-inline-form .tm-builder-form select{width:100%;font-size:12px;min-height:40px;border:1px solid #cedced;border-radius:8px;background:#fff;padding:10px;outline-offset:2px;box-sizing:border-box}
+.tm-studio-inline-form textarea{resize:vertical;min-height:92px}
+.tm-studio-inline-form input:focus,.tm-studio-inline-form textarea:focus,.tm-studio-inline-form select:focus{outline:2px solid #fdc102}
+.tm-studio-inline-form .tm-studio-toggle{padding:7px 0}
+.tm-studio-inline-actions{display:flex;justify-content:flex-end;gap:9px;border-top:1px solid #e7edf5;padding-top:14px;margin-top:4px}
+.tm-studio-inline-actions .tm-studio-btn{padding:11px 16px;font-size:11px}
+.tm-studio-inline-form .tm-field{min-width:0}
+.tm-studio-inline-form .tm-field label{display:block;font-size:11px;font-weight:800;color:#263f61;margin-bottom:6px}
+.tm-studio-inline-form .tm-check-row{padding:6px 0}
+.tm-studio-inline-dialog{margin:0}
+.tm-studio-inline-dialog .tm-studio-inline-form{min-height:170px}
+@media(max-width:640px){.tm-studio-inline-form .tm-builder-form{grid-template-columns:1fr}.tm-studio-inline-form .tm-builder-form>.wide{grid-column:auto}}
