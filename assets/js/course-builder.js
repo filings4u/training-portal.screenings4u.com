@@ -134,6 +134,60 @@ async function studioLoadBlocks(force=false){
  }catch(e){if(state.selectedLesson===id){const host=document.querySelector('#tmStudioEditorBody');if(host)host.innerHTML=`<div class="tm-studio-edit-card"><p class="tm-studio-hint">${esc(e.message||String(e))}</p><a href="lesson-editor.html?id=${encodeURIComponent(id)}">Open full editor</a></div>`}}
  finally{if(state.blockLoading===id)state.blockLoading=''}
 }
+
+async function studioQuizView(){
+ const host=document.querySelector('#tmStudioEditorBody');
+ if(!host||!state.selectedLesson)return;
+ const lessonId=state.selectedLesson;
+ const quizzes=(state.workspace.quizzes||[]).filter(q=>q.lesson_id===lessonId);
+ const course=state.workspace.course;
+ const apiQuiz=(action,more={})=>window.TrainingAuth.invoke(window.TRAINING_PORTAL_CONFIG.quizFunction,{action,...more});
+ const showError=err=>toast(err.message||String(err),'error');
+ if(!quizzes.length){
+  host.innerHTML='<div class="tm-studio-edit-card"><h3>Knowledge Check</h3><p>Create a scored quiz for this lesson. The course stays in its current draft or published state.</p><form id="studioNewQuiz" class="tm-studio-quiz-form"><label>Quiz title<input name="title" required value="'+esc(course.title+' · Knowledge Check')+'"></label><label>Passing score (%)<input name="passing_score" type="number" min="0" max="100" value="80"></label><button type="submit" class="tm-studio-save">Create Quiz</button></form></div>';
+  host.querySelector('#studioNewQuiz').onsubmit=async event=>{
+   event.preventDefault();const form=event.currentTarget;
+   try{await apiQuiz('create_quiz',{lesson_id:lessonId,title:form.elements.title.value.trim(),passing_score:Number(form.elements.passing_score.value||80),is_required:true});await load();await studioQuizView();toast('Knowledge check created.')}catch(e){showError(e)}
+  };return;
+ }
+ const q=quizzes[0];
+ host.innerHTML='<div class="tm-studio-edit-card"><h3>Loading knowledge check…</h3></div>';
+ let data;try{data=await apiQuiz('get',{quiz_id:q.id})}catch(e){host.innerHTML='<div class="tm-studio-edit-card"><p class="tm-studio-hint">'+esc(e.message||String(e))+'</p></div>';return}
+ if(state.selectedLesson!==lessonId||!document.querySelector('#tmStudioEditorBody'))return;
+ const quiz=data.quiz||q,questions=data.questions||[],options=data.options||[];
+ host.innerHTML=`
+ <div class="tm-studio-edit-card"><div class="tm-studio-edit-card-head"><strong>Knowledge Check · ${esc(quiz.title)}</strong><span>${questions.length} questions</span></div>
+ <form id="studioQuizSettings" class="tm-studio-quiz-form"><label>Quiz title<input name="title" required value="${esc(quiz.title)}"></label>
+ <div class="tm-studio-form-two"><label>Passing score (%)<input name="passing_score" type="number" min="0" max="100" value="${Number(quiz.passing_score??80)}"></label>
+ <label>Attempts allowed<input name="attempt_limit" type="number" min="1" value="${esc(quiz.attempt_limit??3)}"></label></div>
+ <label class="tm-studio-toggle"><span>Required to complete course</span><input name="is_required" type="checkbox" ${quiz.is_required?'checked':''}></label>
+ <button type="submit" class="tm-studio-save">Save Quiz Settings</button></form></div>
+ <div class="tm-studio-content-top"><strong>Questions and answers</strong><button id="studioAddQuestion" class="tm-studio-btn gold" type="button">＋ Add Question</button></div>
+ ${questions.map((question,index)=>`<article class="tm-studio-edit-card"><div class="tm-studio-edit-card-head"><strong>${index+1}. ${esc(question.question_text)}</strong><button type="button" data-studio-edit-question="${question.id}">Edit</button></div><div class="tm-studio-quiz-options">${options.filter(o=>o.question_id===question.id).map(o=>`<p class="${o.is_correct?'is-correct':''}">${o.is_correct?'✓':'○'} ${esc(o.option_text)}</p>`).join('')||'<p>No answer options yet.</p>'}</div></article>`).join('')||'<div class="tm-studio-edit-card"><p>No questions. Add the first question to begin.</p></div>'}`;
+ host.querySelector('#studioQuizSettings').onsubmit=async e=>{
+  e.preventDefault();const el=e.currentTarget;
+  try{await apiQuiz('save_quiz',{quiz_id:quiz.id,title:el.elements.title.value.trim(),passing_score:Number(el.elements.passing_score.value),attempt_limit:Number(el.elements.attempt_limit.value)||null,is_required:el.elements.is_required.checked});await load();await studioQuizView();toast('Quiz settings saved.')}catch(err){showError(err)}
+ };
+ const editQuestion=async(question=null)=>{
+  const current=question||{question_text:'',explanation:'',id:null};
+  const opts=current.id?options.filter(o=>o.question_id===current.id):[];
+  const init=opts.length?opts:[{option_text:'',is_correct:true},{option_text:'',is_correct:false},{option_text:'',is_correct:false},{option_text:'',is_correct:false}];
+  const fields='<div class="tm-builder-form">'+textarea('Question text','studioQuestionText',current.question_text||'',true)+textarea('Answer explanation','studioQuestionExplanation',current.explanation||'',true)+'<div class="wide"><strong>Answer options · select the correct answer</strong></div>'+init.map((o,i)=>'<div class="wide tm-studio-quiz-answer"><input name="correct" type="radio" value="'+i+'" '+(o.is_correct?'checked':'')+'><input data-option="'+i+'" placeholder="Answer option '+(i+1)+'" value="'+esc(o.option_text||'')+'"></div>').join('')+'</div>';
+  const d=await dialog(current.id?'Edit Question':'Add Question','Use clear, verifiable statements; explain why the correct answer is correct.',fields,current.id?'Save Question':'Add Question');
+  if(!d)return;
+  const text=d.querySelector('#studioQuestionText')?.value.trim();if(!text){toast('Question text required.','error');return}
+  const answers=[...d.querySelectorAll('[data-option]')].map((input,i)=>({option_text:input.value.trim(),is_correct:i===Number(d.querySelector('[name="correct"]:checked')?.value??0)})).filter(v=>v.option_text);
+  if(answers.length<2||!answers.some(v=>v.is_correct)){toast('Provide at least two answers and one correct answer.','error');return}
+  try{
+   const result=await apiQuiz(current.id?'save_question':'create_question',{quiz_id:quiz.id,question_id:current.id||undefined,question_text:text,question_type:'single_choice',explanation:d.querySelector('#studioQuestionExplanation')?.value.trim()||'',points:1});
+   await apiQuiz('replace_options',{question_id:current.id||result.question.id,options:answers});
+   await studioQuizView();toast('Question saved.');
+  }catch(err){showError(err)}
+ };
+ host.querySelector('#studioAddQuestion')?.addEventListener('click',()=>editQuestion());
+ host.querySelectorAll('[data-studio-edit-question]').forEach(btn=>btn.onclick=()=>editQuestion(questions.find(q=>q.id===btn.dataset.studioEditQuestion)));
+}
+
 function studioBind(){
  if(state.selectedLesson)studioLoadBlocks();
  document.querySelectorAll('[data-select-lesson]').forEach(b=>b.addEventListener('click',()=>{if(studioDirty()&&!window.confirm('You have unsaved lesson changes. Discard them and open another lesson?'))return;state.selectedLesson=b.dataset.selectLesson;state.studioDirty=false;render();bind();switchTab('curriculum')}));
@@ -142,7 +196,7 @@ function studioBind(){
  document.querySelector('#tmAddLessonBottom')?.addEventListener('click',()=>{const s=state.workspace.lessons?.find(l=>l.id===state.selectedLesson)?.section_id||state.workspace.sections?.[0]?.id;if(s)editLesson('',s);else toast('Add a module first.','error')});
  document.querySelector('#tmSaveDraft')?.addEventListener('click',async()=>{try{if(state.workspace.course.status!=='draft'){await api('set_course_status',{course_id:state.id,status:'draft'});await load();render();bind()}toast('Draft saved.')}catch(e){toast(e.message||String(e),'error')}});
  document.querySelector('#tmPreview')?.addEventListener('click',()=>window.open(`https://lms.screenings4u.com/lms-course-details.html?course=${encodeURIComponent(state.id)}`,'_blank','noopener'));
- document.querySelectorAll('[data-editor-view]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-editor-view]').forEach(t=>t.classList.toggle('is-active',t===b));const id=state.selectedLesson,body=document.querySelector('#tmStudioEditorBody');if(!body)return;if(b.dataset.editorView==='content'){render();bind();return;}const views={resources:['Resources',`Upload and assign lesson resources in the content editor.`,`lesson-editor.html?id=${encodeURIComponent(id)}`],quiz:['Knowledge Checks',`Create and manage graded and practice quizzes.`,`quizzes.html?course_id=${encodeURIComponent(state.id)}`],settings:['Lesson Settings',`Edit the lesson properties in the right panel.`,`lesson-editor.html?id=${encodeURIComponent(id)}`]};const v=views[b.dataset.editorView];if(v)body.innerHTML=`<div class="tm-studio-edit-card"><h3>${v[0]}</h3><p>${v[1]}</p><a class="tm-studio-wide-link" href="${v[2]}">Open ${v[0]} ↗</a></div>`;}));
+ document.querySelectorAll('[data-editor-view]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-editor-view]').forEach(t=>t.classList.toggle('is-active',t===b));const id=state.selectedLesson,body=document.querySelector('#tmStudioEditorBody');if(!body)return;if(b.dataset.editorView==='content'){render();bind();return;}if(b.dataset.editorView==='quiz'){studioQuizView();return}if(b.dataset.editorView==='resources'){studioLoadBlocks(true);return}const views={settings:['Lesson Settings',`Edit the lesson properties in the right panel.`,`lesson-editor.html?id=${encodeURIComponent(id)}`]};const v=views[b.dataset.editorView];if(v)body.innerHTML=`<div class="tm-studio-edit-card"><h3>${v[0]}</h3><p>${v[1]}</p><a class="tm-studio-wide-link" href="${v[2]}">Open ${v[0]} ↗</a></div>`;}));
  document.querySelector('#tmStudioLessonForm')?.addEventListener('submit',async e=>{e.preventDefault();const form=e.currentTarget;const vals=new FormData(form);try{await api('update_lesson',{lesson_id:state.selectedLesson,title:String(vals.get('title')||'').trim(),description:String(vals.get('description')||''),status:String(vals.get('status')||'draft'),estimated_minutes:Number(vals.get('estimated_minutes')||0),is_required:form.elements.is_required.checked,completion_required:form.elements.completion_required.checked,lock_until_previous_complete:form.elements.lock_until_previous_complete.checked});await load();render();bind();toast('Lesson settings saved.')}catch(err){toast(err.message||String(err),'error')}});
 }
 function settingsHtml(){const c=state.workspace.course;return `<section class="tm-card"><div class="tm-card-head"><div><h2>Course Settings</h2><p>These settings are read by the LMS course player.</p></div></div><div class="tm-card-body"><form id="tmCourseSettings" class="tm-builder-form">${field('Course title','courseTitle',c.title,'text',true)}${field('Slug','courseSlug',c.slug,'text',true)}${textarea('Short description','courseShort',c.short_description||'',true)}${textarea('Full description','courseDescription',c.description||'',true)}<div class="tm-field"><label for="courseStatus">Status</label><select id="courseStatus">${['draft','review','published','archived'].map(x=>`<option value="${x}" ${c.status===x?'selected':''}>${x}</option>`).join('')}</select></div><div class="tm-field"><label for="coursePassing">Passing score</label><input id="coursePassing" type="number" min="0" max="100" value="${esc(c.passing_score??80)}"></div><div class="tm-field"><label for="courseNav">Navigation</label><select id="courseNav"><option value="free" ${c.navigation_mode==='free'?'selected':''}>Free navigation</option><option value="linear" ${c.navigation_mode==='linear'?'selected':''}>Linear / sequential</option></select></div><div class="tm-field"><label for="coursePace">Pace</label><select id="coursePace"><option value="self_paced" ${c.pace==='self_paced'?'selected':''}>Self paced</option><option value="instructor_led" ${c.pace==='instructor_led'?'selected':''}>Instructor led</option></select></div><div class="tm-field"><label for="courseDays">Time limit (days)</label><input id="courseDays" type="number" min="1" value="${esc(c.time_limit_days??'')}"></div><div class="tm-field"><label for="courseVideo">Video completion %</label><input id="courseVideo" type="number" min="0" max="100" value="${esc(c.video_completion_percent??90)}"></div><div class="wide"><label class="tm-check-row"><input id="courseCertificate" type="checkbox" ${c.certificate_enabled?'checked':''}> Certificate enabled</label><label class="tm-check-row"><input id="courseRequireLessons" type="checkbox" ${c.require_all_required_lessons?'checked':''}> Require all required lessons</label><label class="tm-check-row"><input id="courseRequireAssessments" type="checkbox" ${c.require_required_assessments?'checked':''}> Require required assessments</label><label class="tm-check-row"><input id="courseDownloads" type="checkbox" ${c.allow_student_downloads?'checked':''}> Allow learner downloads</label><label class="tm-check-row"><input id="coursePreview" type="checkbox" ${c.preview_enabled?'checked':''}> Course preview enabled</label></div><div class="wide tm-actions"><button class="tm-btn primary" type="submit">Save Course Settings</button><button class="tm-btn danger" type="button" id="tmArchive">Archive Course</button></div></form></div></section>`}
