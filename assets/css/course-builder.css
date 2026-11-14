@@ -111,3 +111,21 @@ body[data-page="course-builder"] .tm-builder.tm-studio{gap:0;font-family:inherit
 .tm-studio-add-blocks button{background:#f8fbff;border:1px solid #e1e9f4;padding:12px 3px;border-radius:7px;color:#194474;font-weight:800;font-size:10px;cursor:pointer}
 .tm-studio-add-blocks button:hover{background:#fff0bc}
 .tm-studio-add-blocks p{font-size:10px;color:#70859a;margin:10px 0 0}
+
+
+/* Reference LMS-inspired integrated assessment and media controls */
+.tm-studio-upload-label{display:grid;gap:8px;margin-top:14px;padding:10px 12px;border:1px solid #cddbeb;border-radius:9px;background:#fbfdff;color:#35536e;text-align:left;font-size:11px;font-weight:800;cursor:pointer}
+.tm-studio-upload-label input{width:100%;max-width:100%;font:inherit;font-size:10px}
+#tmStudioUploadStatus{min-height:16px;font-size:11px;color:#436280}
+#tmStudioSaveStatus{margin-left:auto;font-size:10px;color:#6b8097;font-weight:700}
+.tm-studio-quiz-form{display:grid;gap:12px;margin-top:14px}
+.tm-studio-quiz-form label:not(.tm-studio-toggle){display:grid;gap:6px;color:#234160;font-size:11px;font-weight:800}
+.tm-studio-quiz-form input{border:1px solid #d1dfed;border-radius:8px;min-height:35px;padding:8px 10px;font:inherit}
+.tm-studio-quiz-form .tm-studio-toggle{display:flex;justify-content:space-between;align-items:center}
+.tm-studio-quiz-options p{padding:7px 9px;margin:4px 0;border-radius:7px;font-size:11px;color:#304c69;background:#f7faff}
+.tm-studio-quiz-options .is-correct{background:#edf8ef;color:#24583c}
+.tm-studio-quiz-answer{display:flex;align-items:center;gap:10px}
+.tm-studio-quiz-answer input[type=radio]{width:17px;height:17px;accent-color:#fdc102;flex-shrink:0}
+.tm-studio-quiz-answer input:not([type=radio]){flex:1;min-width:0;border:1px solid #d6e0ec;border-radius:7px;padding:9px}
+.tm-studio-edit-card-head button{border:1px solid #d7e1ef;border-radius:7px;background:#fff;color:#204b79;font-size:10px;padding:6px 10px;cursor:pointer}
+.tm-studio-content-top button.tm-studio-btn.gold{background:#fdc102;border-color:#fdc102}
